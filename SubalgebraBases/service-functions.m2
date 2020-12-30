@@ -1,10 +1,3 @@
-export {
-    "insertPending",
-    "lowestDegree",
-    "appendToBasis",
-    "processPending"
-    }
-
 -- return the monomial order stashed inside of a ring
 getMonomialOrder = S -> (options S).MonomialOrder
 
