@@ -18,12 +18,12 @@ export {
 -- Performs subduction using the generators of subR.
 -- currently does not require the generators to be a Sagbi basis.
 subduction = method(TypicalValue => RingElement)
-subduction(Subring, RingElement) := (subR, f) -> (
-    pres := subR#"PresRing";
+subduction(Subring, RingElement) := (S, f) -> (
+    pres := S.cache#"SAGBIData"#"SAGBIPresRing";
     tense := pres#"TensorRing";
     if ring f === tense then (
 	f = (pres#"FullSub")(f);
-	)else if ring f =!= ambient subR then (
+	)else if ring f =!= ambient S then (
 	error "f must be from the (ambient subR) or subR's TensorRing.";
 	);
         
@@ -31,10 +31,10 @@ subduction(Subring, RingElement) := (subR, f) -> (
     -- than pres#"TensorRing". In this case, it shouldn't try to prevent an error by using "sub"
     -- or something. Instead, the following line will deliberately throw an error:
     -- (This is done because otherwise there is potential for a segfault.)
-    throwError := f - 1_(ambient subR);   
+    throwError := f - 1_(ambient S);   
     
-    if not subR.cache#?"SyzygyIdealGB" then (
-	subR.cache#"SyzygyIdealGB" = gb (pres#"SyzygyIdeal");
+    if not S.cache#?"SyzygyIdealGB" then (
+	S.cache#"SyzygyIdealGB" = gb (pres#"SyzygyIdeal");
 	);
     J := subR.cache#"SyzygyIdealGB";
         
@@ -72,16 +72,16 @@ subalgebraBasis = method(
 	}
     );
 
-subalgebraBasis(Matrix) := o -> gensMatrix -> (
+subalgebraBasis(Matrix) := opts -> gensMatrix -> (
     R := subring gensMatrix;
-    gens sagbi(R,o)
+    gens sagbi(R,opts)
     );
 
-subalgebraBasis(List) := o -> L -> (
-    gens sagbi(o, subring L)
+subalgebraBasis(List) := opts -> L -> (
+    gens sagbi(opts, subring L)
     );
 
-subalgebraBasis(Subring) := o -> subR -> (
+subalgebraBasis(Subring) := opts -> subR -> (
     gens sagbi subR
     );
 
@@ -95,46 +95,67 @@ sagbi = method(
     	}
     );
 
-sagbi(Matrix) := o -> gensMatrix -> (
-    sagbi(o, subring gensMatrix)
+sagbi(Matrix) := opts -> gensMatrix -> (
+    sagbi(opts, subring gensMatrix)
     );
 
-sagbi(List) := o -> L -> (
-    sagbi(o, subring L)
+sagbi(List) := opts -> L -> (
+    sagbi(opts, subring L)
     );
 
-sagbi(Subring) := o -> R -> (
-    R.cache.SubalgComputations = new MutableHashTable;
-    subalgComp := R.cache.SubalgComputations;
+sagbi(Subring) := opts -> S -> (
     
-    R.cache.SagbiDegrees = {};
-    subalgComp#"sagbiGB" = null;
+    -- previously named S.cache.SubalgComputations
+    S.cache.SAGBIComputations = new MutableHashTable;
     
-    currDegree := null;
-    nLoops := null;
-    R.cache.SagbiDone = false;
+    -- change subalgCopm to SAGBIComp in other functions!
+    SAGBIComp := S.cache.SAGBIComputations;
+    
+    if #(S#"SAGBIData") == 0 then (
+	    SAGBIComp#"SAGBIGens" = matrix(ambient R,{{}});
+	    SAGBIComp#"SAGBILimit" = opts.Limit;
+	    SAGBIComp#"SAGBIDegree" = null;
+	    --SAGBIMaximum is from old code; may be needed in later updates
+	    SAGBIComp#"SAGBIMaximum" = (max degrees source gens R)_0;
+	    SAGBIComp#"SAGBIDegs" = {};
+	    SAGBIComp#"SAGBIDone" = false
+	    SAGBIComp#"SAGBIPresRing" = makePresRing(opts, R, SAGBIComp#"SAGBIGens");
+	    SAGBIComp#"SAGBIPending" = new MutableHashTable;
+	) else if S#"SAGBIData"#"SAGBIDone" (
+	    return S;
+	) else (
+	    SAGBIComp#"SAGBIGens" = S#"SAGBIData"#"SAGBIGens";
+	    SAGBIComp#"SAGBILimit" = opts.Limit;
+	    SAGBIComp#"SAGBIDegree" = S#"SAGBIData"#"SAGBIComputations"#"SAGBIDegree";
+	    --SAGBIMaximum is from old code; may be needed in later updates
+	    SAGBIComp#"SAGBIMaximum" = S#"SAGBIData"#"SAGBIComputations"#"SAGBIMaximum";
+	    SAGBIComp#"SAGBIDegs" = S#"SAGBIData"#"SAGBIDegs";
+	    SAGBIComp#"SAGBIDone" = S#"SAGBIData"#"SAGBIDone";
+	    SAGBIComp#"SAGBIPresRing" = S#"SAGBIData"#"SAGBIPresRing";
+	    SAGBIComp#"SAGBIPending" = S#"SAGBIData"#"SAGBIHash"#"SAGBIPending";
+	)
+    
+    
+    SAGBIComp#"SAGBIgb" = null;
     syzygyPairs := null;
-    newElems := null;
-    
-    subalgComp#"Pending" = new MutableList from toList(o.Limit+1:{});
-    R.cache.SagbiGens = matrix(ambient R,{{}});
+    newPending := null;
+
+-- This is where we left off!
 
     -- Get the maximum degree of the generators. This is used as a stopping condition.
-    maxGensDeg := (max degrees source gens R)_0;
 
     -- Only look at generators below degree limit.  Add those generators to the SubalgebraGenerators
-    reducedGens := compress submatBelowDegree(gens R, o.Limit+1);
-    insertPending(R, reducedGens, o.Limit);
+    reducedGens := compress submatBelowDegree(gens S, opts.Limit+1);
+    insertPending(S, reducedGens, opts.Limit);
     -- Remove elements of coefficient ring
     (subalgComp#"Pending")#0 = {};
-    processPending(R, o.Limit);
-    currDegree = subalgComp#"CurrentLowest" + 1;
+    processPending(S, opts.Limit);
     
-    isPartial := false;
+    SAGBIComp#"SAGBIDegree" = SAGBIComp#"CurrentLowest" + 1;
        
-    while currDegree <= o.Limit and not R.cache.SagbiDone do (  	
+    while SAGBIComp#"SAGBIDegree" <= opts.Limit and not SAGBIComp#"SAGBIDone" do (  	
 	
-	partialSagbi := subalgComp#"PartialSagbi";
+	partialSagbi := SAGBIComp#"SAGBIPresRing";
 	pres := partialSagbi#"PresRing";
 
 	-- SyzygyIdeal is A_I in Sturmfels chapter 11.

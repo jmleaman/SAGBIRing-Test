@@ -10,10 +10,6 @@ insertPending = (S, candidates) -> (
     
     subalgComp := S.cache#"SAGBIComputations";
     
-    if subalgComp#?"Pending" == false then(
-	subalgComp#"Pending" = new MutableHashTable;
-	);
-    
     for candidate in first entries candidates do(
         -- get the entry of the column and its degree
         level := (degree candidate)_0;
@@ -83,6 +79,5 @@ processPending = (S) -> (
     	);
     currentLowest;
     )
-)
 
 end --

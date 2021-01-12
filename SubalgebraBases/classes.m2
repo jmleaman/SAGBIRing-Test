@@ -32,20 +32,8 @@ subring Matrix := opts -> M -> (
 	}
     )
 subring List := opts -> L -> subring(opts, matrix{L})
---31-41 WILL BE DELETED
-PresRing = new Type of HashTable
 
-makePresRing = method(TypicalValue => PresRing, Options => {VarBaseName => "p"});  
-makePresRing(Ring, Matrix) := opts -> (R, gensR) -> ( 
-    
-     ht := new HashTable from {};
-     
-     new PresRing from ht
-
-)
---31-41 WILL BE DELETED
-
-storesagbi = method(Options => {})
+storesagbi = method(Options => {storePending => true})
 storesagbi Subring := opts -> S -> (
     R := ambient S;
     M := gens S;
@@ -56,7 +44,12 @@ storesagbi Subring := opts -> S -> (
 	SAGBIHash := new HashTable from{
 	    "SAGBILimit" => SAGBIComp#"SAGBILimit",
 	    "SAGBIDegree" => SAGBIComp#"SAGBIDegree",
-	    "SAGBIMaximum" => SAGBIComp#"SAGBIMaximum"
+	    "SAGBIMaximum" => SAGBIComp#"SAGBIMaximum",
+	    if opts.storePending then (
+		"SAGBIPending" => SAGBIComp#"Pending";
+		) else (
+		"SAGBIPending" => new MutableHashTable;
+		)
 	    };
 	SAGBIData := new HashTable from{
 	    "SAGBIGens" => Gens,
@@ -117,8 +110,6 @@ sagbiring Subring := opts -> S -> (
     	subring sagbigens(opts, S)
     )
 
-end--
-
 -- This type is compatible with internal maps that are generated in the Sagbi algorithm.
 -- Originally, this was stored directly in the cache of an instance of Subring. 
 -- The problem with that solution is there is a need to use these maps outside of the Sagbi algorithm computations.
@@ -174,31 +165,29 @@ makePresRing(Ring, List) := opts -> (R, gensR) ->(
         (matrix {toList(nBaseGens:0_(TensorRing))}) |
 	(vars TensorRing)_{nBaseGens .. nBaseGens+nSubalgGens-1});
     
-    ProjectionBase := map(ambR, TensorRing,
+    ProjectionAmbient := map(ambR, TensorRing,
         (vars ambR) | matrix {toList(nSubalgGens:0_(ambR))});
     
-    InclusionBase := map(TensorRing, ambR,
+    InclusionAmbient := map(TensorRing, ambR,
         (vars TensorRing)_{0..nBaseGens-1});
     
     Substitution := map(TensorRing, TensorRing,
-        (vars TensorRing)_{0..nBaseGens-1} | InclusionBase(matrix({gensR})));
+        (vars TensorRing)_{0..nBaseGens-1} | InclusionAmbient(matrix({gensR})));
     
-    SyzygyIdeal := ideal(
-        (vars TensorRing)_{nBaseGens..nBaseGens+nSubalgGens-1}-
-	InclusionBase(leadTerm matrix({gensR})));
-    
-    submap := Substitution;
     genVars := (vars TensorRing)_{numgens ambient R..numgens TensorRing-1};
-    liftedPres := ideal(submap(genVars) - genVars);
-    FullSub := ProjectionBase*Substitution;
+    
+    SyzygyIdeal := ideal(genVars - InclusionAmbient(leadTerm matrix({gensR})));
+
+    liftedPres := ideal(Substitution(genVars) - genVars);
+    FullSubstitution := ProjectionAmbient*Substitution;
      
     ht := new HashTable from {
 	"TensorRing" => TensorRing,
 	"ProjectionInclusion" => ProjectionInclusion,
-	"ProjectionBase" => ProjectionBase,
-	"InclusionBase" => InclusionBase,
+	"ProjectionAmbient" => ProjectionAmbient,
+	"InclusionAmbient" => InclusionAmbient,
 	"Substitution" => Substitution,
-	"FullSub" => FullSub,
+	"FullSubstitution" => FullSubstitution,
 	"SyzygyIdeal" => SyzygyIdeal,
 	"LiftedPres" => liftedPres
 	};
@@ -212,6 +201,8 @@ makePresRing(Ring, List) := opts -> (R, gensR) ->(
 makePresRing(Subring) := opts -> subR -> (
     subR#"PresRing"
     );
+
+end--
 
 -- Returns the tensor ring because the function ambient returns the ambient ring.
 ring Subring := A -> (
