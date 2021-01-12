@@ -19,10 +19,10 @@ export {
 -- currently does not require the generators to be a Sagbi basis.
 subduction = method(TypicalValue => RingElement)
 subduction(Subring, RingElement) := (S, f) -> (
-    pres := S.cache#"SAGBIData"#"SAGBIPresRing";
+    pres := S.cache.SAGBIComputations#"SAGBIData"#"SAGBIPresRing";
     tense := pres#"TensorRing";
     if ring f === tense then (
-	f = (pres#"FullSub")(f);
+	f = (pres#"FullSubstitution")(f);
 	)else if ring f =!= ambient S then (
 	error "f must be from the (ambient subR) or subR's TensorRing.";
 	);
@@ -40,7 +40,7 @@ subduction(Subring, RingElement) := (S, f) -> (
         
     F := pres#"Substitution";
     numblocks := rawMonoidNumberOfBlocks raw monoid ambient subR;
-    fMat := matrix({{pres#"InclusionBase"(f)}});    
+    fMat := matrix({{pres#"InclusionAmbient"(f)}});    
     result := rawSubduction(numblocks, raw fMat, raw F, raw J);
     result = promote(result_(0,0), tense);
     result
@@ -112,16 +112,16 @@ sagbi(Subring) := opts -> S -> (
     SAGBIComp := S.cache.SAGBIComputations;
     
     if #(S#"SAGBIData") == 0 then (
-	    SAGBIComp#"SAGBIGens" = matrix(ambient R,{{}});
+	    SAGBIComp#"SAGBIGens" = matrix(ambient S,{{}});
 	    SAGBIComp#"SAGBILimit" = opts.Limit;
 	    SAGBIComp#"SAGBIDegree" = null;
 	    --SAGBIMaximum is from old code; may be needed in later updates
-	    SAGBIComp#"SAGBIMaximum" = (max degrees source gens R)_0;
+	    SAGBIComp#"SAGBIMaximum" = (max degrees source gens S)_0;
 	    SAGBIComp#"SAGBIDegs" = {};
-	    SAGBIComp#"SAGBIDone" = false
-	    SAGBIComp#"SAGBIPresRing" = makePresRing(opts, R, SAGBIComp#"SAGBIGens");
+	    SAGBIComp#"SAGBIDone" = false;
+	    SAGBIComp#"SAGBIPresRing" = makePresRing(opts, S, SAGBIComp#"SAGBIGens");
 	    SAGBIComp#"SAGBIPending" = new MutableHashTable;
-	) else if S#"SAGBIData"#"SAGBIDone" (
+	) else if S#"SAGBIData"#"SAGBIDone" then (
 	    return S;
 	) else (
 	    SAGBIComp#"SAGBIGens" = S#"SAGBIData"#"SAGBIGens";
@@ -133,13 +133,14 @@ sagbi(Subring) := opts -> S -> (
 	    SAGBIComp#"SAGBIDone" = S#"SAGBIData"#"SAGBIDone";
 	    SAGBIComp#"SAGBIPresRing" = S#"SAGBIData"#"SAGBIPresRing";
 	    SAGBIComp#"SAGBIPending" = S#"SAGBIData"#"SAGBIHash"#"SAGBIPending";
-	)
+	);
     
     
     SAGBIComp#"SAGBIgb" = null;
     syzygyPairs := null;
     newPending := null;
-
+    
+    return;
 -- This is where we left off!
 
     -- Get the maximum degree of the generators. This is used as a stopping condition.
