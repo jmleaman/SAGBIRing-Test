@@ -105,11 +105,14 @@ sagbi(List) := opts -> L -> (
 
 sagbi(Subring) := opts -> S -> (
     
+    R := ambient S;
+    
+    
     -- previously named S.cache.SubalgComputations
-    S.cache.SAGBIComputations = new MutableHashTable;
+    S.cache#"SAGBIComputations" = new MutableHashTable;
     
     -- change subalgCopm to SAGBIComp in other functions!
-    SAGBIComp := S.cache.SAGBIComputations;
+    SAGBIComp := S.cache#"SAGBIComputations";
     
     if #(S#"SAGBIData") == 0 then (
 	    SAGBIComp#"SAGBIGens" = matrix(ambient S,{{}});
@@ -119,7 +122,8 @@ sagbi(Subring) := opts -> S -> (
 	    SAGBIComp#"SAGBIMaximum" = (max degrees source gens S)_0;
 	    SAGBIComp#"SAGBIDegs" = {};
 	    SAGBIComp#"SAGBIDone" = false;
-	    SAGBIComp#"SAGBIPresRing" = makePresRing(opts, S, SAGBIComp#"SAGBIGens");
+	    SAGBIComp#"SAGBIPresRing" = null;
+	    -- error occurs if SAGBIPresRing is constructed by makePresRing with an empty list;
 	    SAGBIComp#"SAGBIPending" = new MutableHashTable;
 	) else if S#"SAGBIData"#"SAGBIDone" then (
 	    return S;

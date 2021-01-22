@@ -138,6 +138,10 @@ makePresRing(Ring, Matrix) := opts -> (R, gensR) -> (
 makePresRing(Ring, List) := opts -> (R, gensR) ->( 
     gensR = sort gensR;
     
+    if #gensR == 0 then(
+	error "List passed to makePresRing must not be empty.";
+	);
+    
     if(ring(matrix({gensR})) =!= R) then(
 	error "The generators of the subalgebra must be in the ring R.";
 	);
