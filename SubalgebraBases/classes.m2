@@ -14,12 +14,16 @@ export {
     "sagbigens",
     "sagbiring",
     "storePending",
-    "Limit",
+    "limit",
     "SAGBIBasis",
     "sagbiBasis"
 }
 
 -- Subring data type
+-- A subring is meant to be fairly light-weight.
+-- Subrings include the ambient ring, their generators
+-- a boolean indicating whether the generators are SAGBI and
+-- a PresRing (see later)
 
 Subring = new Type of HashTable
 
@@ -35,17 +39,22 @@ subring Matrix := {} >> opts -> M -> (
 )
 subring List := {} >> opts -> L -> subring(opts, matrix{L})
 
+-- Subring access functions
+
 ambient Subring := A -> A#"ambientRing"
 gens Subring := o -> A -> A#"generators"
 
 -- SAGBIBasis data type
+-- This is a computation object which can hold the intermediate
+-- results of a sagbi basis computation.
+-- This is similar to the output of a gb calculation
 
 SAGBIBasis = new Type of HashTable
 
 sagbiBasis = method(Options => true)
-sagbiBasis Subring := {Limit => 100} >> opts -> S -> (
-    Stopping := new HashTable from {"Limit" => opts.Limit, "Degree" => -1, "Maximum" => -1};
-    Pending := new MutableHashTable;
+sagbiBasis Subring := {limit => 100} >> opts -> S -> (
+    stopping := new HashTable from {"limit" => opts.limit, "degree" => -1, "maximum" => -1};
+    pending := new HashTable;
     new SAGBIBasis from {
         "ambientRing" => ambient S,
         "subringGenerators" => gens S,
@@ -53,27 +62,41 @@ sagbiBasis Subring := {Limit => 100} >> opts -> S -> (
         cache => new CacheTable from {},
         "sagbiDegrees" => matrix(ZZ,{{}}),
         "sagbiDone" => false,
-        "stopping data" => Stopping,
-        "Pending" => Pending,
+        "stoppingData" => stopping,
+        "pending" => pending,
         "presentation" => null
     }
 )
 
-recordsagbi = method(Options => true)
-recordsagbi (Subring, HashTable) := {storePending => true} >> opts -> (S,H) -> (
-    Stopping := new HashTable from {"Limit" => H#"Limit", "Degree" => H#"Degree", "Maximum" => H#"Max"};
-    Pending := if opts.storePending then H#"Pending" else new MutableHashTable;
+sagbiBasis (Subring, MutableHashTable) := {storePending => true} >> opts -> (S,H) -> (
+    stopping := new HashTable from {"limit" => H#"limit", "degree" => H#"degree", "maximum" => H#"max"};
+    pending := if opts.storePending then new HashTable from H#"pending" else new HashTable;
     new SAGBIBasis from {
         "ambientRing" => ambient S,
         "subringGenerators" => gens S,
-        "sagbiGenerators" => H#"Gens",
+        "sagbiGenerators" => H#"gens",
         cache => new CacheTable from {},
-        "sagbiDegrees" => H#"Degs",
-        "sagbiDone" => H#"Done",
-        "stopping data" => Stopping,
-        "Pending" => Pending,
-        "presentation" => makePresRing(opts, ambient S, H#"Gens")
+        "sagbiDegrees" => H#"degs",
+        "sagbiDone" => H#"done",
+        "stoppingData" => stopping,
+        "pending" => pending,
+        "presentation" => makePresRing(opts, ambient S, H#"gens")
     }
+)
+
+subring SAGBIBasis := {} >> opts -> S -> (
+    if #flatten entries S#"sagbiGenerators" == 0 then subring S#"subringGenerators"
+    else if S#"sagbiDone" then new Subring from{
+        "ambientRing" => ring S#"sagbiGenerators",
+        "generators" => S#"sagbiGenerators",
+        "presentation" => makePresRing(opts, ring S#"sagbiGenerators", S#"sagbiGenerators"),
+        "isSAGBI" => true,
+        cache => new CacheTable from {}
+    }
+    else (
+        << "This is not implemented yet, subduction should be invoked";
+        subring (S#"subringGenerators" | S#"sagbiGenerators")
+        )
 )
 
 -- This type is compatible with internal maps that are generated in the Sagbi algorithm.
