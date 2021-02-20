@@ -138,15 +138,15 @@ sagbi(SAGBIBasis) := opts -> sBasis -> (
     *-
     
     sagbiComp#"SAGBIgb" = null;
-    sagbiComp#"syzygyPairs" := null;
-    sagbiComp#"newPending" := null;
+    sagbiComp#"syzygyPairs" = null;
+    sagbiComp#"newPending" = null;
     
 -- This is where we left off!
 
     -- Get the maximum degree of the generators. This is used as a stopping condition.
 
     -- Only look at generators below degree limit.  Add those generators to the SubalgebraGenerators
-    sagbiComp#"reducedGens" := compress submatBelowDegree(sagbiComp#"subringGenerators", opts.Limit+1);
+    sagbiComp#"reducedGens" = compress submatBelowDegree(sagbiComp#"subringGenerators", opts.Limit+1);
     insertPending(sagbiComp, sagbiComp#"reducedGens", opts.Limit);
     -- Remove elements of coefficient ring
     (sagbiComp#"pending")#0 = {};
