@@ -71,7 +71,7 @@ processPending = (compTable) -> (
             remove(compTable#"pending", currentLowest);
 	    );
     	);
-    currentLowest;
+    currentLowest
     )
 
 end --

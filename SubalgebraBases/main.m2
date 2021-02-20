@@ -12,9 +12,6 @@ export {
     "appendToBasis" -- temporary
     }
 
-
-
-
 -- Performs subduction using the generators of subR.
 -- currently does not require the generators to be a Sagbi basis.
 subduction = method(TypicalValue => RingElement)
@@ -103,17 +100,17 @@ sagbi(List) := opts -> L -> (
     sagbi(opts, subring L)
     );
 
-sagbi(Subring) := opts -> S -> (
+sagbi(Subring) := opts -> L -> (
+    sagbi(opts, sagbiBasis L)
+    ); 
+
+sagbi(SAGBIBasis) := opts -> sBasis -> (
+
+    R := sBasis#"ambientRing";
     
-    R := ambient S;
+    sagbiComp := new MutableHashTable from sBasis;
     
-    
-    -- previously named S.cache.SubalgComputations
-    S.cache#"SAGBIComputations" = new MutableHashTable;
-    
-    -- change subalgCopm to SAGBIComp in other functions!
-    SAGBIComp := S.cache#"SAGBIComputations";
-    
+    -*
     if #(S#"SAGBIData") == 0 then (
 	    SAGBIComp#"SAGBIGens" = matrix(ambient S,{{}});
 	    SAGBIComp#"SAGBILimit" = opts.Limit;
@@ -138,26 +135,28 @@ sagbi(Subring) := opts -> S -> (
 	    SAGBIComp#"SAGBIPresRing" = S#"SAGBIData"#"SAGBIPresRing";
 	    SAGBIComp#"SAGBIPending" = S#"SAGBIData"#"SAGBIHash"#"SAGBIPending";
 	);
+    *-
     
+    sagbiComp#"SAGBIgb" = null;
+    sagbiComp#"syzygyPairs" := null;
+    sagbiComp#"newPending" := null;
     
-    SAGBIComp#"SAGBIgb" = null;
-    syzygyPairs := null;
-    newPending := null;
-    
-    return;
 -- This is where we left off!
 
     -- Get the maximum degree of the generators. This is used as a stopping condition.
 
     -- Only look at generators below degree limit.  Add those generators to the SubalgebraGenerators
-    reducedGens := compress submatBelowDegree(gens S, opts.Limit+1);
-    insertPending(S, reducedGens, opts.Limit);
+    sagbiComp#"reducedGens" := compress submatBelowDegree(sagbiComp#"subringGenerators", opts.Limit+1);
+    insertPending(sagbiComp, sagbiComp#"reducedGens", opts.Limit);
     -- Remove elements of coefficient ring
-    (subalgComp#"Pending")#0 = {};
-    processPending(S, opts.Limit);
+    (sagbiComp#"pending")#0 = {};
+    sagbiComp#"CurrentLowest" = processPending(sagbiComp, opts.Limit);
     
-    SAGBIComp#"SAGBIDegree" = SAGBIComp#"CurrentLowest" + 1;
-       
+    sagbiComp#"stopping"#"degree" = sagbiComp#"CurrentLowest" + 1;
+      
+     
+    end;
+    
     while SAGBIComp#"SAGBIDegree" <= opts.Limit and not SAGBIComp#"SAGBIDone" do (  	
 	
 	partialSagbi := SAGBIComp#"SAGBIPresRing";

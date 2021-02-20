@@ -69,7 +69,7 @@ sagbiBasis Subring := {limit => 100} >> opts -> S -> (
 )
 
 sagbiBasis (Subring, MutableHashTable) := {storePending => true} >> opts -> (S,H) -> (
-    stopping := new HashTable from {"limit" => H#"limit", "degree" => H#"degree", "maximum" => H#"max"};
+    stopping := new HashTable from {"limit" => H#"limit", "degree" => H#"degree", "maximum" => H#"maximum"};
     pending := if opts.storePending then new HashTable from H#"pending" else new HashTable;
     new SAGBIBasis from {
         "ambientRing" => ambient S,
