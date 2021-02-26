@@ -106,153 +106,96 @@ subring SAGBIBasis := {} >> opts -> S -> (
 PresRing = new Type of HashTable
 
 net PresRing := pres -> (
-tense := pres#"TensorRing";
-A := numcols vars tense;
-B := numcols selectInSubring(1, vars tense);
-"PresRing instance ("|toString(B)|" generators in "|toString(A-B)|" variables)"
+    tense := pres#"TensorRing";
+    A := numcols vars tense;
+    B := numcols selectInSubring(1, vars tense);
+    "PresRing instance ("|toString(B)|" generators in "|toString(A-B)|" variables)"
 )
 
 -- gensR are elements of R generating some subalgebra.
 -- R is a polynomial ring.
 makePresRing = method(TypicalValue => PresRing, Options => {VarBaseName => "p"})
 makePresRing(Ring, Matrix) := opts -> (R, gensR) -> (
-if(R =!= ring(gensR)) then(
-error "The generators of the subalgebra must be in the ring R.";
-);
-makePresRing(opts, R, first entries gensR)
-);
+    if(R =!= ring(gensR)) then(
+    error "The generators of the subalgebra must be in the ring R.";
+    );
+    makePresRing(opts, R, first entries gensR)
+)
 
 makePresRing(Ring, List) := opts -> (R, gensR) ->(
-gensR = sort gensR;
+    gensR = sort gensR;
 
-if #gensR == 0 then(
-error "List passed to makePresRing must not be empty.";
-);
+    if #gensR == 0 then(
+        error "List passed to makePresRing must not be empty.";
+    );
 
-if(ring(matrix({gensR})) =!= R) then(
-error "The generators of the subalgebra must be in the ring R.";
-);
+    if(ring(matrix({gensR})) =!= R) then(
+        error "The generators of the subalgebra must be in the ring R.";
+    );
 
-ambR := R;
-nBaseGens := numgens ambR;
-nSubalgGens := length gensR;
+    ambR := R;
+    nBaseGens := numgens ambR;
+    nSubalgGens := length gensR;
 
--- Create a ring with combined generators of base and subalgebra.
-MonoidAmbient := monoid ambR;
-CoeffField := coefficientRing ambR;
+    -- Create a ring with combined generators of base and subalgebra.
+    monoidAmbient := monoid ambR;
+    coeffField := coefficientRing ambR;
 
--- Construct the monoid of a ring with variables corresponding to generators of the ambient ring and the subalgebra.
--- Has an elimination order that eliminates the generators of the ambient ring.
--- The degrees of generators are set so that the SyzygyIdeal is homogeneous.
-newOrder := prepend(Eliminate nBaseGens, MonoidAmbient.Options.MonomialOrder);
+    -- Construct the monoid of a ring with variables corresponding to generators of the ambient ring and the subalgebra.
+    -- Has an elimination order that eliminates the generators of the ambient ring.
+    -- The degrees of generators are set so that the SyzygyIdeal is homogeneous.
+    newOrder := prepend(Eliminate nBaseGens, monoidAmbient.Options.MonomialOrder);
 
-NewVariables := monoid[
-VariableBaseName=> opts.VarBaseName,
-Variables=>nBaseGens+nSubalgGens,
-Degrees=>join(degrees source vars ambR, degrees source matrix({gensR})),
-MonomialOrder => newOrder];
+    newVariables := monoid[
+    VariableBaseName=> opts.VarBaseName,
+    Variables=>nBaseGens+nSubalgGens,
+    Degrees=>join(degrees source vars ambR, degrees source matrix({gensR})),
+    MonomialOrder => newOrder];
 
-TensorRing := CoeffField NewVariables;
+    tensorRing := coeffField newVariables;
 
-ProjectionInclusion := map(TensorRing, TensorRing,
-(matrix {toList(nBaseGens:0_(TensorRing))}) |
-(vars TensorRing)_{nBaseGens .. nBaseGens+nSubalgGens-1});
+    sagbiInclusion := map(tensorRing, tensorRing,
+    (matrix {toList(nBaseGens:0_(tensorRing))}) |
+    (vars tensorRing)_{nBaseGens .. nBaseGens+nSubalgGens-1});
 
-ProjectionAmbient := map(ambR, TensorRing,
-(vars ambR) | matrix {toList(nSubalgGens:0_(ambR))});
+    projectionAmbient := map(ambR, tensorRing,
+    (vars ambR) | matrix {toList(nSubalgGens:0_(ambR))});
 
-InclusionAmbient := map(TensorRing, ambR,
-(vars TensorRing)_{0..nBaseGens-1});
+    inclusionAmbient := map(tensorRing, ambR,
+    (vars tensorRing)_{0..nBaseGens-1});
 
-Substitution := map(TensorRing, TensorRing,
-(vars TensorRing)_{0..nBaseGens-1} | InclusionAmbient(matrix({gensR})));
+    substitution := map(tensorRing, tensorRing,
+    (vars tensorRing)_{0..nBaseGens-1} | inclusionAmbient(matrix({gensR})));
 
-genVars := (vars TensorRing)_{numgens ambient R..numgens TensorRing-1};
+    genVars := (vars tensorRing)_{numgens ambient R..numgens tensorRing-1};
 
-SyzygyIdeal := ideal(genVars - InclusionAmbient(leadTerm matrix({gensR})));
+    syzygyIdeal := ideal(genVars - inclusionAmbient(leadTerm matrix({gensR})));
 
-liftedPres := ideal(Substitution(genVars) - genVars);
-FullSubstitution := ProjectionAmbient*Substitution;
+    liftedPres := ideal(substitution(genVars) - genVars);
+    fullSubstitution := projectionAmbient*substitution;
 
-ht := new HashTable from {
-"TensorRing" => TensorRing,
-"ProjectionInclusion" => ProjectionInclusion,
-"ProjectionAmbient" => ProjectionAmbient,
-"InclusionAmbient" => InclusionAmbient,
-"Substitution" => Substitution,
-"FullSubstitution" => FullSubstitution,
-"SyzygyIdeal" => SyzygyIdeal,
-"LiftedPres" => liftedPres
-};
+    ht := new HashTable from {
+    "tensorRing" => tensorRing,
+    "sagbiInclusion" => sagbiInclusion,
+    "projectionAmbient" => projectionAmbient,
+    "inclusionAmbient" => inclusionAmbient,
+    "substitution" => substitution,
+    "fullSubstitution" => fullSubstitution,
+    "syzygyIdeal" => syzygyIdeal,
+    "liftedPres" => liftedPres
+    };
 
-new PresRing from ht
+    new PresRing from ht
 );
 
 -- The reason why this is implemented is to prevent incorrect usage of the makePresRing constructor.
 -- A subring is already associated with an immutable PresRing instance which should be used instead of
 -- constructing a new instance. Don't use makePresRing when you can use the function subring.
 makePresRing(Subring) := opts -> subR -> (
-subR#"PresRing"
+    subR#"PresRing"
 );
 
 end---Michael
-
-
-subring = method(Options => {VarBaseName => "p"})
-subring Matrix := opts -> M -> (
-    R := ring M;
-    cTable := new CacheTable from{};
-    SAGBIData := new HashTable from{};
-    new Subring from {
-    	"AmbientRing" => R,
-    	"Generators" => M,
-	-- The PresRing of a Subring instance is immutable because the generators are immutable.
-	"PresRing" => makePresRing(opts, R, M),
-	cache => cTable,
-	-- If this is empty, then no SAGBI computation has been computed.
-	-- If this is nonempty, then SAGBI has started.
-	-- The SAGBI computation is complete if SAGBI_Done is true
-	"SAGBIData" => SAGBIData
-	}
-    )
-subring List := opts -> L -> subring(opts, matrix{L})
-
-storesagbi = method(Options => {storePending => true})
-storesagbi Subring := opts -> S -> (
-    R := ambient S;
-    M := gens S;
-    cTable := new CacheTable from{};
-    if S.cache#?"SAGBIComputations" then (
-    	SAGBIComp := S.cache#"SAGBIComputations",
-	Gens := SAGBIComp#"SAGBIGens",
-	SAGBIHash := new HashTable from{
-	    "SAGBILimit" => SAGBIComp#"SAGBILimit",
-	    "SAGBIDegree" => SAGBIComp#"SAGBIDegree",
-	    "SAGBIMaximum" => SAGBIComp#"SAGBIMaximum",
-	    if opts.storePending then (
-		"SAGBIPending" => SAGBIComp#"Pending";
-		) else (
-		"SAGBIPending" => new MutableHashTable;
-		)
-	    };
-	SAGBIData := new HashTable from{
-	    "SAGBIGens" => Gens,
-	    "SAGBIDegs" => SAGBIComp#"SAGBIDegs",
-	    "SAGBIDone" => SAGBIComp#"SAGBIDone",
-    	    "SAGBIComputations" => SAGBIHash,
-	    "SAGBIPresRing" => makePresRing(opts, R, Gens)
-	    };
-    	new Subring from{
-	    "AmbientRing" => R,
-	    "Generators" => M,
-	    "PresRing" => makePresRing(opts, R, M),
-	    cache => cTable,
-	    "SAGBIData" => SAGBIData
-    	    }
-    	) else (
-	    subring M	
-    	)
-    )
 
 sagbidone = method(Options => {})
 sagbidone Subring := opts -> S -> (
