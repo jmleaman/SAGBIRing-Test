@@ -17,8 +17,8 @@ export {"evaluate"}
 exportMutable {}
 
 needs "./SubalgebraBases/classes.m2"
---needs "./SubalgebraBases/service-functions.m2"
---needs "./SubalgebraBases/main.m2"
+needs "./SubalgebraBases/service-functions.m2"
+needs "./SubalgebraBases/main.m2"
 --needs "./SubalgebraBases/toric_syz.m2"
 --needs "./SubalgebraBases/subring_modules.m2"
 --needs "./SubalgebraBases/tests.m2"
