@@ -16,7 +16,9 @@ export {
     "storePending",
     "limit",
     "SAGBIBasis",
-    "sagbiBasis"
+    "sagbiBasis",
+    "isSagbi",
+    "sagbiDone"
 }
 
 -- Subring data type
@@ -43,6 +45,11 @@ subring List := {} >> opts -> L -> subring(opts, matrix{L})
 
 ambient Subring := A -> A#"ambientRing"
 gens Subring := o -> A -> A#"generators"
+numgens Subring := A -> (numcols gens A)
+net Subring := A -> "subring of " | toString(ambient A)
+
+isSagbi = method()
+isSagbi Subring := A -> A#"isSAGBI"
 
 -- SAGBIBasis data type
 -- This is a computation object which can hold the intermediate
@@ -84,20 +91,28 @@ sagbiBasis (Subring, MutableHashTable) := {storePending => true} >> opts -> (S,H
     }
 )
 
-subring SAGBIBasis := {} >> opts -> S -> (
-    if #flatten entries S#"sagbiGenerators" == 0 then subring S#"subringGenerators"
-    else if S#"sagbiDone" then new Subring from{
-        "ambientRing" => ring S#"sagbiGenerators",
-        "generators" => S#"sagbiGenerators",
-        "presentation" => makePresRing(opts, ring S#"sagbiGenerators", S#"sagbiGenerators"),
-        "isSAGBI" => true,
-        cache => new CacheTable from {}
-    }
+gens SAGBIBasis := o -> S -> (
+    if #flatten entries S#"sagbiGenerators" == 0 then S#"subringGenerators"
+    else if S#"sagbiDone" then (S#"sagbiGenerators")
     else (
         << "This is not implemented yet, subduction should be invoked";
-        subring (S#"subringGenerators" | S#"sagbiGenerators")
-        )
+        S#"subringGenerators" | S#"sagbiGenerators"
+    )
 )
+
+subring SAGBIBasis := {} >> opts -> S -> (
+    G := gens S;
+    if S#"sagbiDone" then new Subring from{
+        "ambientRing" => ring S#"sagbiGenerators",
+        "generators" => G,
+        "presentation" => makePresRing(opts, ring S#"sagbiGenerators", S#"sagbiGenerators"),
+        "isSAGBI" => true,
+        cache => new CacheTable from {}}
+    else subring G
+)
+
+sagbiDone = method(Options => {})
+sagbiDone SAGBIBasis := opts -> S -> S#"sagbiDone"
 
 -- This type is compatible with internal maps that are generated in the Sagbi algorithm.
 -- Originally, this was stored directly in the cache of an instance of Subring.
@@ -106,7 +121,7 @@ subring SAGBIBasis := {} >> opts -> S -> (
 PresRing = new Type of HashTable
 
 net PresRing := pres -> (
-    tense := pres#"TensorRing";
+    tense := pres#"tensorRing";
     A := numcols vars tense;
     B := numcols selectInSubring(1, vars tense);
     "PresRing instance ("|toString(B)|" generators in "|toString(A-B)|" variables)"
@@ -196,48 +211,6 @@ makePresRing(Subring) := opts -> subR -> (
 );
 
 end---Michael
-
-sagbidone = method(Options => {})
-sagbidone Subring := opts -> S -> (
-    	if #(S#"SAGBIData") == 0 then false
-	else S#"SAGBIData"#"SAGBIDone"
-    )
- 
-gens Subring := o -> A -> A#"Generators"
-numgens Subring := A -> numcols gens A
-ambient Subring := A -> A#"AmbientRing"
-net Subring := A -> "subring of " | toString(ambient A)
-
-sagbigens = method(
-    TypicalValue => Subring,
-    Options=>{
-	Strategy => null,
-    	Limit => 100,
-    	PrintLevel => 0
-	}
-    )
-sagbigens Subring := opts -> S -> (
-    	if #(S#"SAGBIData") == 0 then subalgebraBasis(S, opts)
-	else if opts.Limit > S#"SAGBIData"#"SAGBIComputations"#"SAGBILimit" then subalgebraBasis(S, opts)
-	else if sagbidone S then S#"SAGBIData"S"SAGBIGens"
-	else (
-	    S#"SAGBIData"S"SAGBIGens" | subduction(subring gens S, S#"SAGBIData"#"SAGBIGens")
-	    ) 
-    )
-
-sagbiring = method(
-    TypicalValue => Subring,
-    Options=>{
-	Strategy => null,
-    	Limit => 100,
-    	PrintLevel => 0
-	}
-    )
-sagbiring Subring := opts -> S -> (
-    	subring sagbigens(opts, S)
-    )
-
-end--
 
 -- Returns the tensor ring because the function ambient returns the ambient ring.
 ring Subring := A -> (
